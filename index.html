@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hours Cost Calculator</title>
+  <style>
+    :root{
+      --bg:#FFF8CC;          /* light yellow */
+      --card:#ffffff;
+      --text:#222;
+      --muted:#666;
+      --accent:#222; /* neutral so it works on the yellow */
+      --radius:14px;
+      --shadow:0 10px 30px rgba(0,0,0,.12);
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg);
+      color:var(--text);
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+    .wrap{
+      width:min(720px, 100%);
+      display:grid;
+      gap:18px;
+    }
+    header h1{
+      margin:0 0 6px;
+      letter-spacing:.2px;
+      font-size:clamp(20px, 3.8vw, 32px);
+    }
+    header p{margin:0;color:var(--muted)}
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .row{display:grid; gap:12px; margin-bottom:14px;}
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    @media (max-width:640px){ .grid-2{grid-template-columns:1fr} }
+    label{font-weight:600}
+    .pill{
+      background:#f3f3f3;
+      border-radius:999px;
+      padding:4px;
+      display:inline-flex;
+      gap:4px;
+    }
+    .pill input{display:none}
+    .pill button{
+      border:0;
+      background:transparent;
+      padding:8px 14px; border-radius:999px;
+      cursor:pointer;
+      font-weight:600;
+      color:var(--muted);
+    }
+    .pill button[aria-pressed="true"]{
+      background:#fff;
+      color:var(--text);
+      box-shadow:0 1px 4px rgba(0,0,0,.12), inset 0 0 0 1px #e8e8e8;
+    }
+    .control{
+      display:flex; gap:10px; align-items:center;
+    }
+    input[type="range"]{ width:100%; }
+    input[type="number"], input[type="text"]{
+      width:100%; padding:12px 14px; border-radius:10px;
+      border:1px solid #ddd; font-size:16px; box-sizing:border-box;
+    }
+    .muted{color:var(--muted); font-size:14px}
+    .actions{display:flex; gap:10px; align-items:center; justify-content:flex-start; margin-top:8px}
+    button.primary{
+      appearance:none; border:0; background:var(--accent); color:#fff;
+      padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer;
+    }
+    details{
+      background:#fff; border-radius:12px; padding:10px 12px; border:1px dashed #e5e5e5;
+    }
+    details summary{cursor:pointer; font-weight:600; margin:4px 0}
+    /* Modal */
+    .modal-backdrop{
+      position:fixed; inset:0; display:none;
+      background:rgba(0,0,0,.45);
+      align-items:center; justify-content:center;
+      padding:20px; z-index:10;
+    }
+    .modal-backdrop.show{display:flex}
+    .modal{
+      background:#fff; border-radius:18px; box-shadow:var(--shadow);
+      max-width:520px; width:100%; padding:22px;
+    }
+    .modal h2{margin-top:0}
+    .close{
+      float:right; border:0; background:#eee; border-radius:10px; padding:6px 10px; cursor:pointer;
+    }
+    .result-big{
+      font-size:clamp(28px, 5.2vw, 40px);
+      font-weight:800; letter-spacing:.3px; margin:6px 0 4px;
+    }
+    .mono{font-variant-numeric: tabular-nums}
+    footer{margin-top:6px; color:var(--muted); font-size:13px; text-align:center}
+  </style>
+</head>
+<body>
+  <main class="wrap" aria-labelledby="title">
+    <header>
+      <h1 id="title">How many hours will this cost?</h1>
+      <p>Slide your pay, enter the item price, smash the button.</p>
+    </header>
+
+    <section class="card" aria-label="Inputs">
+      <div class="row">
+        <label>Pay mode</label>
+        <div role="group" aria-label="Pay mode" class="pill">
+          <button id="modeHourly" aria-pressed="true">Hourly rate</button>
+          <button id="modeSalary" aria-pressed="false">Annual salary</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="grid-2" id="hourlyRow">
+          <div>
+            <label for="hourlyRange">Hourly rate</label>
+            <div class="control">
+              <input id="hourlyRange" type="range" min="5" max="100" step="0.5" value="15" aria-describedby="hourlyHint">
+              <input id="hourlyNumber" type="number" min="0" step="0.01" value="15" aria-label="Hourly rate number input">
+            </div>
+            <div class="muted" id="hourlyHint">Range: 5–100 (edit the number for anything else)</div>
+          </div>
+          <div>
+            <label for="currency">Currency</label>
+            <input id="currency" type="text" value="£" maxlength="3" aria-describedby="currencyHint">
+            <div class="muted" id="currencyHint">Any symbol or ISO code (e.g., £, $, EUR)</div>
+          </div>
+        </div>
+
+        <div class="grid-2" id="salaryRow" style="display:none">
+          <div>
+            <label for="salaryRange">Annual salary</label>
+            <div class="control">
+              <input id="salaryRange" type="range" min="10000" max="120000" step="1000" value="30000" aria-describedby="salaryHint">
+              <input id="salaryNumber" type="number" min="0" step="100" value="30000" aria-label="Salary number input">
+            </div>
+            <div class="muted" id="salaryHint">Range: 10k–120k (edit the number for anything else)</div>
+          </div>
+          <div>
+            <label for="hoursPerWeek">Hours/week</label>
+            <input id="hoursPerWeek" type="number" min="1" max="80" step="0.5" value="40">
+            <div class="muted">Used to convert salary → hourly (×52 weeks)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="price">Item price</label>
+        <div class="control">
+          <input id="price" type="number" min="0" step="0.01" placeholder="e.g., 249.99">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="calcBtn">Calculate hours</button>
+        <span class="muted" id="instantResult" aria-live="polite"></span>
+      </div>
+
+      <details style="margin-top:10px">
+        <summary>Advanced (optional)</summary>
+        <div class="grid-2" style="margin-top:10px">
+          <div>
+            <label for="weeksPerYear">Weeks/year</label>
+            <input id="weeksPerYear" type="number" min="1" max="60" step="1" value="52">
+          </div>
+          <div>
+            <label for="roundTo">Round to</label>
+            <input id="roundTo" type="number" min="1" max="60" step="1" value="1" aria-describedby="roundHint">
+            <div class="muted" id="roundHint">Round result to nearest minute(s). 1 = exact minutes.</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <footer>Made for humans who hate subscriptions.</footer>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-labelledby="resTitle" aria-describedby="resDesc">
+    <div class="modal">
+      <button class="close" id="closeBtn" aria-label="Close">Close</button>
+      <h2 id="resTitle">Result</h2>
+      <div class="result-big mono" id="resBig">–</div>
+      <p id="resDesc" class="muted">–</p>
+    </div>
+  </div>
+
+  <script>
+    const modeHourly = document.getElementById('modeHourly');
+    const modeSalary = document.getElementById('modeSalary');
+    const hourlyRow = document.getElementById('hourlyRow');
+    const salaryRow = document.getElementById('salaryRow');
+
+    function setMode(mode){
+      const isHourly = mode === 'hourly';
+      modeHourly.setAttribute('aria-pressed', isHourly ? 'true' : 'false');
+      modeSalary.setAttribute('aria-pressed', isHourly ? 'false' : 'true');
+      hourlyRow.style.display = isHourly ? '' : 'none';
+      salaryRow.style.display = isHourly ? 'none' : '';
+      localStorage.setItem('payMode', mode);
+      updateInstant();
+    }
+
+    modeHourly.addEventListener('click', ()=> setMode('hourly'));
+    modeSalary.addEventListener('click', ()=> setMode('salary'));
+
+    // Inputs
+    const hourlyRange = document.getElementById('hourlyRange');
+    const hourlyNumber = document.getElementById('hourlyNumber');
+    const salaryRange = document.getElementById('salaryRange');
+    const salaryNumber = document.getElementById('salaryNumber');
+    const hoursPerWeek = document.getElementById('hoursPerWeek');
+    const weeksPerYear = document.getElementById('weeksPerYear');
+    const currency = document.getElementById('currency');
+    const price = document.getElementById('price');
+    const roundTo = document.getElementById('roundTo');
+    const instant = document.getElementById('instantResult');
+
+    // Sync helpers
+    function link(a,b){ a.addEventListener('input',()=> b.value = a.value); b.addEventListener('input',()=> a.value = b.value); }
+    link(hourlyRange, hourlyNumber);
+    link(salaryRange, salaryNumber);
+
+    [hourlyRange,hourlyNumber,salaryRange,salaryNumber,hoursPerWeek,weeksPerYear,price,roundTo].forEach(el=>{
+      el.addEventListener('input', updateInstant);
+    });
+
+    function salaryToHourly(sal, hpw, wpy){
+      hpw = +hpw || 40; wpy = +wpy || 52;
+      if(hpw<=0 || wpy<=0) return 0;
+      return sal/(hpw*wpy);
+    }
+
+    function formatHM(totalHours){
+      const totalMinutes = Math.round(totalHours*60);
+      const minsStep = Math.max(1, +roundTo.value||1);
+      const roundedMins = Math.round(totalMinutes/minsStep)*minsStep;
+      const hrs = Math.floor(roundedMins/60);
+      const mins = roundedMins%60;
+      if(hrs >= 24){
+        const days = Math.floor(hrs/24);
+        const remH = hrs%24;
+        return `${days}d ${remH}h ${mins}m`;
+      }
+      return `${hrs}h ${mins}m`;
+    }
+
+    function calcHours(){
+      const cost = Math.max(0, +price.value || 0);
+      const mode = modeHourly.getAttribute('aria-pressed') === 'true' ? 'hourly':'salary';
+      let hourly = 0;
+      if(mode === 'hourly'){
+        hourly = Math.max(0.000001, +hourlyNumber.value || 0);
+      }else{
+        const sal = Math.max(0, +salaryNumber.value || 0);
+        hourly = Math.max(0.000001, salaryToHourly(sal, +hoursPerWeek.value, +weeksPerYear.value));
+      }
+      const hours = hourly>0 ? (cost / hourly) : 0;
+      return { hours, hourly, cost, mode };
+    }
+
+    function updateInstant(){
+      const {hours, hourly, cost} = calcHours();
+      if(cost>0 && hourly>0){
+        instant.textContent = `≈ ${formatHM(hours)} of work`;
+      }else{
+        instant.textContent = '';
+      }
+    }
+
+    // Modal UI
+    const calcBtn = document.getElementById('calcBtn');
+    const backdrop = document.getElementById('backdrop');
+    const closeBtn = document.getElementById('closeBtn');
+    const resBig = document.getElementById('resBig');
+    const resDesc = document.getElementById('resDesc');
+
+    function openModal(){
+      const {hours, hourly, cost} = calcHours();
+      const sym = currency.value || '';
+      resBig.textContent = (cost>0 && hourly>0) ? `${formatHM(hours)}` : 'Enter values';
+      resDesc.textContent = (cost>0 && hourly>0) ? 
+        `At ${sym}${hourly.toFixed(2)}/hr, ${sym}${cost.toFixed(2)} costs about ${hours.toFixed(2)} hours.`
+        : 'Set your pay and the item price first.';
+      backdrop.classList.add('show');
+      // Focus trap basic
+      closeBtn.focus();
+    }
+
+    function closeModal(){ backdrop.classList.remove('show'); }
+
+    calcBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+    // Init
+    const savedMode = localStorage.getItem('payMode');
+    if(savedMode==='salary') setMode('salary'); else setMode('hourly');
+    updateInstant();
+  </script>
+</body>
+</html>
